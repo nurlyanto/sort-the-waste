@@ -19,7 +19,7 @@
       background: linear-gradient(135deg,var(--bg-1),var(--bg-2));
       display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;
       -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
-      overflow-y:auto;-webkit-overflow-scrolling:touch;
+      overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;
     }
 
     .wrap{
@@ -83,6 +83,7 @@
       aspect-ratio:1/1; /* keep square */
       text-align:center;color:#0f172a;
       min-height:0;
+      word-break:break-word;
     }
 
     .waste-card .emoji{font-size:3.6rem;line-height:1}
@@ -204,12 +205,12 @@
   <div class="wrap" role="application" aria-label="Sort the Waste game">
     <div class="topbar">
       <div class="title">
-        <h1>Sort the Waste</h1>
-        <p>Help save the planet by sorting waste correctly — drag the cards into the correct bin below!</p>
+        <h1>Sort the Waste (Pilah Sampah)</h1>
+        <p>Help save the planet by sorting waste correctly. (Bantu selamatkan bumi dengan memilah sampah dengan benar.)</p>
       </div>
 
       <div class="stats" aria-hidden="false">
-        <div class="stat small" id="timerStat">⏳ Time: <span id="timer">60</span>s</div>
+        <div class="stat small" id="timerStat">⏳ Time: <span id="timer">120</span>s</div>
         <div class="stat small" id="progressStat">📦 Sorted: <span id="sortedCount">0</span>/<span id="totalCount">8</span></div>
         <div class="stat small" id="pointsStat">⭐ Points: <span id="points">0</span></div>
         <div class="stat small" id="percentStat">📈 <span id="percent">0</span>%</div>
@@ -234,8 +235,8 @@
       <div class="bin green" id="biodegradable" ondrop="drop(event)" ondragover="dragover(event)" ondragleave="dragleave(event)" aria-label="Biodegradable bin">
         <div class="art">🌿</div>
         <div>
-          <div class="label">Biodegradable</div>
-          <div class="drop-here">Drop Here</div>
+          <div class="label">Biodegradable (Sampah Organik)</div>
+          <div class="drop-here">Drop Here (Lepaskan di Sini)</div>
         </div>
         <div class="bin-items" id="biodegradableItems" aria-hidden="false"></div>
       </div>
@@ -243,16 +244,16 @@
       <div class="bin blue" id="non-biodegradable" ondrop="drop(event)" ondragover="dragover(event)" ondragleave="dragleave(event)" aria-label="Non-biodegradable bin">
         <div class="art">🗑️</div>
         <div>
-          <div class="label">Non-Biodegradable</div>
-          <div class="drop-here">Drop Here</div>
+          <div class="label">Non-Biodegradable (Sampah Anorganik)</div>
+          <div class="drop-here">Drop Here (Lepaskan di Sini)</div>
         </div>
         <div class="bin-items" id="non-biodegradableItems" aria-hidden="false"></div>
       </div>
     </div>
 
     <div class="controls">
-      <button class="btn ghost" id="resetBtn">🔄 Play Again</button>
-      <button class="btn secondary" id="toggleSound">🔊 Sound On</button>
+      <button class="btn ghost" id="resetBtn">🔄 Play Again (Main Lagi)</button>
+      <button class="btn secondary" id="toggleSound">🔊 Sound On (Suara Aktif)</button>
     </div>
   </div>
 
@@ -268,7 +269,7 @@
       </div>
       <p id="finalMessage" style="color:#475569;font-weight:700">Keep learning and keep recycling!</p>
       <div style="margin-top:14px">
-        <button class="btn" id="playAgainBtn">Play Again</button>
+        <button class="btn" id="playAgainBtn">Play Again (Main Lagi)</button>
       </div>
     </div>
   </div>
@@ -297,7 +298,8 @@ let gameState = {
   correctSorts: 0,
   sortedIds: {}, // itemId -> true when correctly placed
   draggedItem: null,
-  timeLeft: 60,
+  touchDragData: null,
+  timeLeft: 120,
   timerInterval: null,
   soundEnabled: true,
   points: 0
@@ -395,7 +397,8 @@ function initGame(){
   gameState.correctSorts = 0;
   gameState.sortedIds = {};
   gameState.draggedItem = null;
-  gameState.timeLeft = 60;
+  gameState.touchDragData = null;
+  gameState.timeLeft = 120;
   gameState.points = 0;
   gameState.totalItems = gameData.biodegradable.length + gameData.nonBiodegradable.length;
 
@@ -443,11 +446,16 @@ function initGame(){
     itemsPool.appendChild(card);
     gameState.sortedIds[id] = false;
 
-    // drag handlers
+    // drag handlers (desktop)
     card.addEventListener('dragstart',dragstart);
     card.addEventListener('dragend',dragend);
 
-    // keyboard accessibility (Enter to "pick up" then place not fully implemented but at least focusable)
+    // touch handlers (mobile)
+    card.addEventListener('touchstart', onTouchStart, {passive:false});
+    card.addEventListener('touchmove', onTouchMove, {passive:false});
+    card.addEventListener('touchend', onTouchEnd);
+
+    // keyboard accessibility
     card.tabIndex = 0;
   });
 
@@ -466,12 +474,139 @@ function initGame(){
 }
 
 /* -------------------------
-   Drag & Drop Handlers
+   Shared drop logic used by desktop & touch
+   ------------------------- */
+function handleDropFor(card, binEl){
+  if(!card || !binEl) return;
+  const id = card.id;
+  if(gameState.sortedIds[id]){
+    showFeedback('Already placed correctly!', 'error');
+    playError();
+    return;
+  }
+  const targetCategory = binEl.id;
+  const cardCategory = card.dataset.category;
+  const isCorrect = (targetCategory === 'biodegradable' && cardCategory === 'biodegradable') ||
+                    (targetCategory === 'non-biodegradable' && cardCategory === 'non-biodegradable');
+
+  if(isCorrect){
+    card.classList.add('placed');
+    card.draggable = false;
+    const container = (targetCategory === 'biodegradable') ? biodegradableItems : nonBiodegradableItems;
+    container.appendChild(card);
+    gameState.sortedIds[id] = true;
+    gameState.correctSorts++;
+    gameState.points += POINTS_PER_CORRECT;
+    playSuccess();
+    binEl.classList.add('bounce');
+    setTimeout(()=> binEl.classList.remove('bounce'), 540);
+    const fact = card.dataset.fact || 'Great job!';
+    showFeedback('✅ Correct! ' + fact);
+    updateProgress();
+    if(gameState.correctSorts === gameState.totalItems){
+      clearInterval(gameState.timerInterval);
+      const timeBonus = Math.round(gameState.timeLeft * TIME_BONUS_MULTIPLIER);
+      gameState.points += timeBonus;
+      setTimeout(()=> finishGame(false, timeBonus), 800);
+    }
+  } else {
+    card.classList.add('incorrect');
+    playError();
+    showFeedback('❌ Not quite — try again!', 'error');
+    setTimeout(()=> {
+      card.classList.remove('incorrect');
+      if(document.body.contains(card) && !gameState.sortedIds[id]){
+        itemsPool.appendChild(card);
+      }
+    }, 450);
+  }
+}
+
+/* -------------------------
+   Touch drag & drop implementation
+   ------------------------- */
+function onTouchStart(e){
+  if(!e.changedTouches || e.changedTouches.length === 0) return;
+  e.preventDefault();
+  const touch = e.changedTouches[0];
+  const card = e.currentTarget;
+  // create drag ghost
+  const rect = card.getBoundingClientRect();
+  const ghost = card.cloneNode(true);
+  ghost.classList.add('dragging');
+  ghost.style.position = 'fixed';
+  ghost.style.left = (rect.left) + 'px';
+  ghost.style.top = (rect.top) + 'px';
+  ghost.style.margin = '0';
+  ghost.style.width = rect.width + 'px';
+  ghost.style.height = rect.height + 'px';
+  ghost.style.pointerEvents = 'none';
+  ghost.style.zIndex = 9999;
+  document.body.appendChild(ghost);
+  // hide original to avoid duplicate visuals
+  card.style.visibility = 'hidden';
+
+  gameState.touchDragData = {
+    id: touch.identifier,
+    card: card,
+    ghost: ghost,
+    offsetX: touch.clientX - rect.left,
+    offsetY: touch.clientY - rect.top,
+    currentOverBin: null
+  };
+}
+
+function onTouchMove(e){
+  if(!gameState.touchDragData) return;
+  const touch = e.changedTouches[0];
+  if(touch.identifier !== gameState.touchDragData.id) return;
+  e.preventDefault(); // prevent page scroll while dragging
+  const {ghost, offsetX, offsetY, currentOverBin} = gameState.touchDragData;
+  const x = touch.clientX - offsetX;
+  const y = touch.clientY - offsetY;
+  ghost.style.left = x + 'px';
+  ghost.style.top = y + 'px';
+
+  // detect element under finger
+  const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+  let binEl = elem && elem.closest ? elem.closest('.bin') : null;
+  if(binEl !== currentOverBin){
+    if(currentOverBin) currentOverBin.classList.remove('drag-over');
+    if(binEl) binEl.classList.add('drag-over');
+    gameState.touchDragData.currentOverBin = binEl;
+  }
+}
+
+function onTouchEnd(e){
+  if(!gameState.touchDragData) return;
+  const touch = e.changedTouches[0];
+  if(touch.identifier !== gameState.touchDragData.id) return;
+  e.preventDefault();
+  const {card, ghost, currentOverBin} = gameState.touchDragData;
+  // remove ghost
+  ghost.remove();
+  // restore original visibility
+  card.style.visibility = '';
+  // clear drag-over highlight
+  if(currentOverBin) currentOverBin.classList.remove('drag-over');
+
+  if(currentOverBin){
+    handleDropFor(card, currentOverBin);
+  } else {
+    // no drop target; leave card in pool (ensure it's present)
+    if(!document.body.contains(card)) return;
+    itemsPool.appendChild(card);
+  }
+
+  gameState.touchDragData = null;
+}
+
+/* -------------------------
+   Existing desktop drag handlers (unchanged) 
    ------------------------- */
 function dragstart(e){
   gameState.draggedItem = e.target;
   e.target.classList.add('dragging');
-  // small tilt random
   e.target.style.transform = 'scale(1.06) rotate(4deg)';
   e.dataTransfer.setData('text/plain', e.target.id);
   e.dataTransfer.effectAllowed = 'move';
@@ -505,71 +640,8 @@ function drop(e){
   if(!id) return;
   const card = document.getElementById(id);
   if(!card) return;
+  handleDropFor(card, binEl);
 
-  // Already correctly sorted?
-  if(gameState.sortedIds[id]) {
-    showFeedback('Already placed correctly!', 'error');
-    playError();
-    return;
-  }
-
-  const targetCategory = binEl.id; // 'biodegradable' or 'non-biodegradable'
-  const cardCategory = card.dataset.category;
-
-  const isCorrect = (targetCategory === 'biodegradable' && cardCategory === 'biodegradable') ||
-                    (targetCategory === 'non-biodegradable' && cardCategory === 'non-biodegradable');
-
-  if(isCorrect){
-    // visual placement
-    card.classList.add('placed');
-    card.draggable = false;
-    // append to bin container
-    const container = (targetCategory === 'biodegradable') ? biodegradableItems : nonBiodegradableItems;
-    container.appendChild(card);
-
-    // mark sorted
-    gameState.sortedIds[id] = true;
-    gameState.correctSorts++;
-
-    // points
-    gameState.points += POINTS_PER_CORRECT;
-
-    // play sound & animation
-    playSuccess();
-    binEl.classList.add('bounce');
-    setTimeout(()=> binEl.classList.remove('bounce'), 540);
-
-    // show educational fact
-    const fact = card.dataset.fact || 'Great job!';
-    showFeedback('✅ Correct! ' + fact);
-
-    // update UI
-    updateProgress();
-
-    // check completion
-    if(gameState.correctSorts === gameState.totalItems){
-      // award time bonus
-      clearInterval(gameState.timerInterval);
-      const timeBonus = Math.round(gameState.timeLeft * TIME_BONUS_MULTIPLIER);
-      gameState.points += timeBonus;
-      setTimeout(()=> finishGame(false, timeBonus), 800);
-    }
-  } else {
-    // incorrect: shake, show message, play error sound, return card to pool
-    card.classList.add('incorrect');
-    playError();
-    showFeedback('❌ Not quite — try again!', 'error');
-    // quick shake then remove class
-    setTimeout(()=> {
-      card.classList.remove('incorrect');
-      // return to pool (if still exists)
-      if(document.body.contains(card) && !gameState.sortedIds[id]){
-        itemsPool.appendChild(card);
-      }
-    }, 450);
-  }
-
-  // cleanup drag classes
   if(gameState.draggedItem) {
     gameState.draggedItem.classList.remove('dragging');
     gameState.draggedItem = null;
@@ -602,30 +674,15 @@ function getAchievement(percent){
 }
 
 function finishGame(timeout=false, timeBonus=0){
-  // stop timer
   clearInterval(gameState.timerInterval);
-
-  // compute final metrics
   const percent = Math.round((gameState.correctSorts / gameState.totalItems) * 100);
-  // points already includes base + time bonus added earlier if all sorted; if timeout, add a partial time bonus?
-  if(timeout){
-    // give partial time bonus of remaining seconds (in this case zero) - none; keep points as-is
-  }
-
   updateProgress();
-
-  // play celebration only if at least one correct
   if(gameState.correctSorts > 0) playCelebration();
-
-  // modal content
   finalPointsEl.textContent = gameState.points;
   finalPercentEl.textContent = percent + '%';
-
   const ach = getAchievement(percent);
   achievementBadge.textContent = `${ach.emoji} ${ach.name}`;
   finalMessage.textContent = timeout ? `Time's up! ${ach.message}` : `${ach.message} Great job helping the planet!`;
-
-  // show modal & confetti
   celebrationModal.classList.add('show');
   celebrationModal.setAttribute('aria-hidden','false');
   launchConfetti();
@@ -636,7 +693,7 @@ function finishGame(timeout=false, timeBonus=0){
    ------------------------- */
 function launchConfetti(){
   const emojis = ['🎉','✨','🌟','⭐','🎊','🌍','♻️','🌱'];
-  for(let i=0;i<70;i++){
+  for(let i=0;i<50;i++){
     const c = document.createElement('div');
     if(Math.random() > 0.8){
       c.className = 'confetti emoji';
@@ -671,7 +728,7 @@ playAgainBtn.addEventListener('click', ()=>{
 
 toggleSoundBtn.addEventListener('click', ()=>{
   gameState.soundEnabled = !gameState.soundEnabled;
-  toggleSoundBtn.textContent = gameState.soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+  toggleSoundBtn.textContent = gameState.soundEnabled ? '🔊 Sound On (Suara Aktif)' : '🔇 Sound Off (Suara Mati)';
   toggleSoundBtn.classList.toggle('disabled', !gameState.soundEnabled);
 });
 
