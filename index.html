@@ -186,6 +186,34 @@
 
     /* Mobile adjustments to avoid clipping/overlap */
     @media (max-width:640px){
+      .items-pool{
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+}
+
+.waste-card{
+  aspect-ratio:auto !important;
+  height:60px;
+  padding:8px;
+  flex-direction:row;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+}
+
+.waste-card .emoji{
+  font-size:1.5rem;
+  width:32px;
+  flex:0 0 32px;
+}
+
+.waste-card .name{
+  font-size:.85rem;
+  text-align:left;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
       /* reduce outer spacing and add bottom padding so sticky bins don't cover content */
       body{padding:8px; padding-bottom:120px;}
       .wrap{padding:12px;border-radius:12px; gap:10px}
