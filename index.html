@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>♻️ Sort the Waste - Educational Game</title>
+  <title>Sort the Waste</title>
   <style>
     :root{
       --bg-1:#E8F8F5; --bg-2:#FFF8EA;
@@ -13,12 +13,13 @@
     }
 
     *{box-sizing:border-box;margin:0;padding:0}
-    html,body{height:100%}
+    html,body{min-height:100%;height:auto}
     body{
       font-family:var(--font-sans);
       background: linear-gradient(135deg,var(--bg-1),var(--bg-2));
-      display:flex;align-items:center;justify-content:center;padding:20px;
+      display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;
       -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+      overflow-y:auto;-webkit-overflow-scrolling:touch;
     }
 
     .wrap{
@@ -26,6 +27,7 @@
       background:linear-gradient(180deg,#FFFFFF, #FBFDFF);
       border-radius:20px; padding:20px; box-shadow: 0 30px 80px rgba(16,24,40,0.08);
       display:flex;flex-direction:column;gap:16px;
+      margin:12px auto;
     }
 
     /* TOP BAR: Title + Stats */
@@ -33,15 +35,15 @@
       display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;
     }
     .title{
-      display:flex;flex-direction:column;gap:6px;
+      display:flex;flex-direction:column;gap:6px;min-width:0;
     }
     .title h1{
-      font-size:1.6rem; color:#0F172A; letter-spacing:0.4px;
+      font-size:1.6rem; color:#0F172A; letter-spacing:0.4px; margin:0;
     }
-    .title p{font-size:0.95rem;color:#475569;opacity:0.95}
+    .title p{font-size:0.95rem;color:#475569;opacity:0.95;margin:0}
 
     .stats{
-      display:flex;gap:12px;align-items:center;
+      display:flex;gap:12px;align-items:center;flex-shrink:0;
     }
 
     .stat{
@@ -80,6 +82,7 @@
       gap:6px;padding:10px;cursor:grab; user-select:none; transition:transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
       aspect-ratio:1/1; /* keep square */
       text-align:center;color:#0f172a;
+      min-height:0;
     }
 
     .waste-card .emoji{font-size:3.6rem;line-height:1}
@@ -105,7 +108,7 @@
       display:flex;flex-direction:column;align-items:center;justify-content:space-between;
       box-shadow: 0 16px 48px rgba(2,6,23,0.06); border:1px solid rgba(15,23,42,0.04);
       transition:transform 250ms ease, box-shadow 250ms ease;
-      position:relative; overflow:hidden;
+      position:relative; overflow:visible;
     }
     .bin .art{
       font-size:3.6rem;
@@ -121,7 +124,7 @@
     .bin.drag-over{ transform: translateY(-6px) scale(1.02); box-shadow:0 30px 80px rgba(59,130,246,0.12) }
 
     /* Items container inside bin */
-    .bin-items{ display:flex;gap:10px;padding:10px;background:transparent;border-radius:12px;flex-wrap:wrap;min-height:72px;align-content:flex-start;justify-content:center }
+    .bin-items{ display:flex;gap:10px;padding:10px;background:transparent;border-radius:12px;flex-wrap:wrap;min-height:72px;align-content:flex-start;justify-content:center; }
 
     .bin .waste-card{ width:84px; height:84px; padding:6px; font-size:0.9rem; border-radius:10px }
 
@@ -162,7 +165,7 @@
     /* Modal */
     .modal{ position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background: rgba(2,6,23,0.45); z-index:1000;opacity:0;pointer-events:none;transition:opacity 220ms ease }
     .modal.show{ opacity:1; pointer-events:auto }
-    .modal-card{ background:white;border-radius:18px;padding:28px;width:min(720px,94%); text-align:center; box-shadow: 0 40px 120px rgba(2,6,23,0.18) }
+    .modal-card{ background:white;border-radius:18px;padding:28px;width:min(720px,94%); text-align:center; box-shadow: 0 40px 120px rgba(2,6,23,0.18); max-height:calc(100vh - 40px); overflow:auto }
     .modal-card h2{ font-size:1.6rem;margin-bottom:8px }
     .badge{ font-size:2rem;margin:12px 0 }
     .final-stats{ display:flex;gap:12px;justify-content:center;align-items:center;margin:12px 0; font-weight:900 }
@@ -180,14 +183,29 @@
     /* timer highlight when low */
     .timer-low{ color:var(--error); }
 
+    /* Mobile adjustments to avoid clipping/overlap */
+    @media (max-width:640px){
+      body{padding:12px}
+      .wrap{padding:14px;border-radius:14px}
+      .topbar{align-items:flex-start}
+      .stats{width:100%;justify-content:flex-start;gap:8px;flex-wrap:wrap}
+      .stat{min-width:0;flex:0 1 auto}
+      .progress-info{font-size:0.9rem}
+      .bins{flex-direction:column}
+      .bin{width:100%}
+      .bin .art{height:72px;font-size:2.4rem}
+      .waste-card .emoji{font-size:3rem}
+      .modal-card{padding:18px}
+    }
+
   </style>
 </head>
 <body>
   <div class="wrap" role="application" aria-label="Sort the Waste game">
     <div class="topbar">
       <div class="title">
-        <h1>♻️ Sort the Waste — Educational Game</h1>
-        <p>Drag the waste cards into the correct bin. Learn facts and earn badges!</p>
+        <h1>Sort the Waste</h1>
+        <p>Help save the planet by sorting waste correctly — drag the cards into the correct bin below!</p>
       </div>
 
       <div class="stats" aria-hidden="false">
