@@ -361,6 +361,39 @@
             animation: confettiFall 3s ease-out forwards;
         }
 
+        .confetti.emoji {
+            width: auto;
+            height: auto;
+            font-size: 2em;
+            background: transparent;
+            animation: confettiFall 3.5s ease-out forwards;
+        }
+
+        .sound-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.5em;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .sound-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .sound-toggle.disabled {
+            opacity: 0.5;
+        }
+
         @keyframes slideDown {
             from {
                 opacity: 0;
@@ -425,9 +458,22 @@
         }
 
         @keyframes confettiFall {
+            0% {
+                transform: translateY(-10vh) rotate(0deg);
+                opacity: 1;
+            }
             to {
-                transform: translateY(100vh) rotate(360deg);
+                transform: translateY(100vh) rotate(720deg);
                 opacity: 0;
+            }
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
             }
         }
 
@@ -481,6 +527,14 @@
             .modal-content .emoji-large {
                 font-size: 3.5em;
             }
+
+            .sound-toggle {
+                width: 45px;
+                height: 45px;
+                font-size: 1.2em;
+                top: 15px;
+                right: 15px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -525,10 +579,20 @@
             .score-result {
                 font-size: 1.5em;
             }
+
+            .sound-toggle {
+                width: 40px;
+                height: 40px;
+                font-size: 1em;
+                top: 10px;
+                right: 10px;
+            }
         }
     </style>
 </head>
 <body>
+    <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
+
     <div class="container">
         <div class="header">
             <h1>♻️ Sort the Waste 🌍</h1>
@@ -586,6 +650,98 @@
     </div>
 
     <script>
+        // Sound management
+        let soundEnabled = true;
+
+        // Web Audio API for sound effects
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+        }
+
+        // Create correct answer sound (ascending beep)
+        function playCorrectSound() {
+            if (!soundEnabled) return;
+            initAudio();
+            
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(500, now);
+            osc.frequency.exponentialRampToValueAtTime(1000, now + 0.15);
+            
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            
+            osc.start(now);
+            osc.stop(now + 0.15);
+        }
+
+        // Create incorrect answer sound (descending beep)
+        function playIncorrectSound() {
+            if (!soundEnabled) return;
+            initAudio();
+            
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(400, now + 0.2);
+            
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            
+            osc.start(now);
+            osc.stop(now + 0.2);
+        }
+
+        // Create celebration sound (ascending chord)
+        function playCelebrationSound() {
+            if (!soundEnabled) return;
+            initAudio();
+            
+            const now = audioCtx.currentTime;
+            const frequencies = [523.25, 659.25, 783.99]; // C5, E5, G5
+            
+            frequencies.forEach((freq, index) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now);
+                
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                
+                osc.start(now);
+                osc.stop(now + 0.6);
+            });
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('soundToggle');
+            btn.textContent = soundEnabled ? '🔊' : '🔇';
+            btn.classList.toggle('disabled');
+        }
+
         const gameData = {
             biodegradable: [
                 { emoji: '🍌', name: 'Banana Peel' },
@@ -683,6 +839,7 @@
 
             if (gameState.sorted[itemId]) {
                 showFeedback('Already sorted! 🎯', false);
+                playIncorrectSound();
                 return;
             }
 
@@ -698,6 +855,8 @@
                 gameState.draggedItem.classList.add('placed', 'item-correct');
                 gameState.correctSorts++;
                 showFeedback('✅ Correct! Great job!', true);
+                playCorrectSound();
+                createSmallConfetti();
 
                 const container = document.getElementById(targetCategory + 'Items');
                 gameState.draggedItem.draggable = false;
@@ -706,6 +865,7 @@
             } else {
                 gameState.draggedItem.classList.add('placed', 'incorrect');
                 showFeedback('❌ Try Again! Wrong category.', false);
+                playIncorrectSound();
 
                 setTimeout(() => {
                     gameState.draggedItem.classList.remove('placed', 'incorrect');
@@ -744,17 +904,53 @@
         }
 
         function showCelebration() {
+            playCelebrationSound();
             createConfetti();
             document.getElementById('finalScore').textContent = '100';
             document.getElementById('celebrationModal').classList.add('show');
         }
 
-        function createConfetti() {
-            for (let i = 0; i < 50; i++) {
+        // Small confetti for correct answers
+        function createSmallConfetti() {
+            for (let i = 0; i < 15; i++) {
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti';
                 confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = Math.random() * 30 + '%';
                 confetti.style.backgroundColor = ['#FFD700', '#FF6B6B', '#4CAF50', '#667eea', '#f093fb'][Math.floor(Math.random() * 5)];
+                confetti.style.animationDelay = Math.random() * 0.3 + 's';
+                confetti.style.width = (Math.random() * 10 + 5) + 'px';
+                confetti.style.height = confetti.style.width;
+                document.body.appendChild(confetti);
+
+                setTimeout(() => confetti.remove(), 2000);
+            }
+        }
+
+        // Large confetti for game completion
+        function createConfetti() {
+            const emojis = ['🎉', '✨', '🌟', '⭐', '🎊', '🌍', '♻️', '🌱'];
+            
+            // Regular confetti
+            for (let i = 0; i < 60; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.backgroundColor = ['#FFD700', '#FF6B6B', '#4CAF50', '#667eea', '#f093fb', '#FF8A80', '#81C784'][Math.floor(Math.random() * 7)];
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                confetti.style.width = (Math.random() * 15 + 8) + 'px';
+                confetti.style.height = confetti.style.width;
+                document.body.appendChild(confetti);
+
+                setTimeout(() => confetti.remove(), 3500);
+            }
+
+            // Emoji confetti
+            for (let i = 0; i < 40; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti emoji';
+                confetti.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                confetti.style.left = Math.random() * 100 + '%';
                 confetti.style.animationDelay = Math.random() * 0.5 + 's';
                 document.body.appendChild(confetti);
 
