@@ -324,16 +324,13 @@
       .waste-card.placed{ pointer-events:none; opacity:0.95; transform: none; }
 
       /* sticky bottom bins so users can always reach them */
-      .bins{
-        position:fixed;
-        left:8px;
-        right:8px;
-        bottom:12px;
-        gap:8px;
-        display:flex;
-        z-index:1200;
-        padding:8px;
-        justify-content:space-between;
+.bins{
+    display:flex;
+    gap:20px;
+    justify-content:space-between;
+    position:static;
+    z-index:auto;
+}
       }
       .bin{
         min-height:56px;
