@@ -186,17 +186,78 @@
 
     /* Mobile adjustments to avoid clipping/overlap */
     @media (max-width:640px){
-      body{padding:12px}
-      .wrap{padding:14px;border-radius:14px}
+      /* reduce outer spacing and add bottom padding so sticky bins don't cover content */
+      body{padding:8px; padding-bottom:120px;}
+      .wrap{padding:12px;border-radius:12px; gap:10px}
       .topbar{align-items:flex-start}
       .stats{width:100%;justify-content:flex-start;gap:8px;flex-wrap:wrap}
-      .stat{min-width:0;flex:0 1 auto}
+      .stat{min-width:0;flex:0 1 auto;padding:6px 8px;font-size:0.85rem}
       .progress-info{font-size:0.9rem}
-      .bins{flex-direction:column}
-      .bin{width:100%}
-      .bin .art{height:72px;font-size:2.4rem}
-      .waste-card .emoji{font-size:3rem}
-      .modal-card{padding:18px}
+
+      /* 2-column masonry-like compact grid */
+      .items-pool{
+        grid-template-columns: repeat(2,1fr);
+        gap:8px;
+        grid-auto-rows: auto;
+      }
+
+      /* compact horizontal cards */
+      .waste-card{
+        aspect-ratio: auto !important;
+        height:60px;
+        padding:8px;
+        flex-direction:row;
+        align-items:center;
+        justify-content:flex-start;
+        gap:10px;
+        width:100%;
+        min-height:0;
+        transition:transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+      }
+      .waste-card .emoji{font-size:1.6rem; width:36px; display:flex; align-items:center; justify-content:center}
+      .waste-card .name{font-weight:800;font-size:0.95rem; text-align:left}
+      .waste-card:hover{ transform: translateY(-4px) scale(1.01); box-shadow: 0 12px 30px rgba(16,24,40,0.06) }
+      .waste-card.dragging{ transform: scale(1.03) rotate(2deg); }
+      .waste-card.placed{ pointer-events:none; opacity:0.95; transform: none; }
+
+      /* sticky bottom bins so users can always reach them */
+      .bins{
+        position:fixed;
+        left:8px;
+        right:8px;
+        bottom:12px;
+        gap:8px;
+        display:flex;
+        z-index:1200;
+        padding:8px;
+        justify-content:space-between;
+      }
+      .bin{
+        min-height:56px;
+        padding:8px 10px;
+        border-radius:12px;
+        display:flex;
+        flex-direction:row;
+        align-items:center;
+        justify-content:space-between;
+        box-shadow: 0 10px 30px rgba(2,6,23,0.08);
+        flex:1;
+      }
+      .bin .art{ font-size:1.8rem; height:auto; width:36px; display:flex; align-items:center; justify-content:center; margin-right:8px }
+      .bin .label{ font-weight:800; font-size:0.95rem; display:flex; align-items:center; gap:6px }
+      .bin .drop-here{ display:none }
+      .bin-items{ min-height:0; padding:6px; gap:6px }
+
+      /* ensure modal doesn't get hidden behind sticky bins */
+      .modal.show .modal-card{ margin-bottom:60px }
+      .modal-card{ max-height:calc(100vh - 110px) }
+      .modal{ align-items:flex-end }
+
+      .waste-card .emoji, .bin .art {flex:0 0 auto}
+
+      /* reduce overall whitespace */
+      .controls{ margin-top:6px; gap:8px }
+      .feedback{ padding:8px 10px; font-size:0.9rem; min-height:48px }
     }
 
   </style>
